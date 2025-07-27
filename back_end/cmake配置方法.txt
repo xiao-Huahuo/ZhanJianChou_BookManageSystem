@@ -1,0 +1,11 @@
+#文件结构:CMakeLists.txt与src和build文件夹并列(没有就先创建:
+	在 backend 目录下:
+	mkdir build
+	cd build
+)  
+
+
+# 先切换到backend,配置CMake (请将 <path_to_vcpkg> 替换为你的vcpkg路径)
+cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake"
+# 编译
+cmake --build build

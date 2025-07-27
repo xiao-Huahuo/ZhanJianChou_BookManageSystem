@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>图书管理系统 - 我的收藏</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#81C784',
+            secondary: '#A5D6A7',
+            tertiary: '#C8E6C9',
+            accent: '#4CAF50',
+            neutral: '#F1F8E9',
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      }
+    }
+  </script>
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto {
+        content-visibility: auto;
+      }
+      .text-shadow {
+        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+      .card-hover {
+        transition: all 0.3s ease;
+      }
+      .card-hover:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      }
+      .sidebar-item {
+        @apply flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200;
+      }
+      .sidebar-item.active {
+        @apply bg-primary/20 text-accent font-medium;
+      }
+      .sidebar-item:hover:not(.active) {
+        @apply bg-gray-100;
+      }
+      .btn-primary {
+        @apply bg-primary hover:bg-accent text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5;
+      }
+      .btn-secondary {
+        @apply bg-gray-200 border border-gray-300 text-gray-500 font-medium py-2 px-4 rounded-lg transition-all duration-200 cursor-not-allowed;
+      }
+      .btn-danger {
+        @apply bg-red-500 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg;
+      }
+    }
+  </style>
+   <style>
+    /* --- 标准化背景样式 开始 --- */
+    #background-slideshow {
+        background-image: url('images/background1.jpg');
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        transition: background-image 1s ease-in-out;
+        filter: brightness(85%);
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+    }
+
+    body {
+        background-color: transparent;
+    }
+
+    aside, main, header {
+        background-color: rgba(255, 255, 255, 0.3);
+        position: relative;
+        z-index: 1;
+    }
+    
+    .dark #background-slideshow {
+        filter: brightness(60%);
+    }
+
+    .dark body {
+        background-color: transparent;
+    }
+
+    .dark aside, .dark main, .dark header {
+        background-color: rgba(31, 41, 55, 0.3);
+    }
+    /* 为表格和信息提示区域也加上半透明背景 */
+    .dark .bg-white {
+        background-color: rgba(31, 41, 55, 0.3);
+    }
+    .dark .bg-gray-50 {
+        background-color: rgba(55, 65, 81, 0.3);
+    }
+    /* --- 标准化背景样式 结束 --- */
+  </style>
+</head>
+<body class="font-sans text-gray-800">
+<div id="background-slideshow"></div>
+  <script>
+    // 认证守卫
+    (function() {
+      const currentUser = sessionStorage.getItem('currentUser');
+      if (!currentUser) {
+        alert('请先登录！');
+        window.location.href = 'login.html';
+      }
+    })();
+  </script>
+  
+  <div id="user-dashboard" class="min-h-screen flex flex-col">
+    <header class="shadow-sm sticky top-0 z-50">
+      <div class="flex items-center justify-between px-4 sm:px-6 lg:px-8 py-3">
+        <div class="flex items-center space-x-2">
+          <button id="sidebar-toggle" class="lg:hidden text-gray-500 hover:text-gray-900">
+            <i class="fa fa-bars text-xl"></i>
+          </button>
+          <div class="flex items-center">
+            <i class="fa fa-book text-primary text-2xl mr-2"></i>
+            <h1 class="text-xl font-bold text-gray-900">图书管理系统</h1>
+          </div>
+        </div>
+        <div class="flex items-center space-x-4">
+          <div class="relative">
+            <button class="p-2 rounded-full hover:bg-gray-100 relative">
+              <i class="fa fa-bell-o text-gray-500"></i>
+              <span class="absolute top-1 right-1 h-2 w-2 rounded-full bg-red-500"></span>
+            </button>
+          </div>
+          <div class="flex items-center space-x-3">
+            <img src="https://picsum.photos/id/1005/40/40" alt="用户头像" class="h-8 w-8 rounded-full object-cover">
+            <div class="hidden md:block">
+              <p id="user-name-display" class="text-sm font-medium text-gray-700"></p>
+              <p id="user-role-display" class="text-xs text-gray-500"></p>
+            </div>
+            <button id="logout-btn" class="text-gray-500 hover:text-gray-900">
+              <i class="fa fa-sign-out"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="flex flex-1 overflow-hidden">
+        <aside id="sidebar" class="w-64 shadow-md transform -translate-x-full lg:translate-x-0 fixed lg:static h-[calc(100vh-64px)] z-40 transition-transform duration-300 ease-in-out">
+            <div class="flex flex-col h-full">
+              <nav class="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
+                <div class="px-4 py-2 mb-4">
+                  <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">主菜单</h2>
+                </div>
+                <a href="user-page.html" class="sidebar-item">
+                  <i class="fa fa-home text-lg"></i>
+                  <span>首页</span>
+                </a>
+                <a href="page.html" class="sidebar-item">
+                  <i class="fa fa-book text-lg"></i>
+                  <span>图书列表</span>
+                </a>
+                <a href="my_borrowings.html" class="sidebar-item">
+                  <i class="fa fa-calendar-check-o text-lg"></i>
+                  <span>我的借阅</span>
+                </a>
+                <a href="my_collections.html" class="sidebar-item active">
+                  <i class="fa fa-star-o text-lg"></i>
+                  <span>我的收藏</span>
+                </a>
+                <a href="borrowing_history.html" class="sidebar-item">
+                  <i class="fa fa-clock-o text-lg"></i>
+                  <span>借阅历史</span>
+                </a>
+                <div class="px-4 py-2 mt-6 mb-4">
+                  <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">设置</h2>
+                </div>
+                <a href="user_info.html" class="sidebar-item">
+                  <i class="fa fa-user-o text-lg"></i>
+                  <span>个人信息</span>
+                </a>
+                <a href="system_settings.html" class="sidebar-item">
+                  <i class="fa fa-cog text-lg"></i>
+                  <span>系统设置</span>
+                </a>
+              </nav>
+            </div>
+          </aside>
+
+      <main class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+        <div class="mb-8">
+          <h2 class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold text-gray-900">我的收藏</h2>
+          <p class="text-gray-600">您收藏的图书列表。</p>
+        </div>
+
+        <div id="collections-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          </div>
+          <p id="no-collections-message" class="text-gray-500 col-span-full hidden text-center text-xl mt-10">您还没有收藏任何书籍。</p>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const currentUser = sessionStorage.getItem('currentUser');
+        if (!currentUser) return;
+
+        const users = JSON.parse(localStorage.getItem('users')) || [];
+        const userInfo = users.find(u => u.username === currentUser);
+        if (userInfo) {
+            document.getElementById('user-name-display').textContent = userInfo.name;
+            document.getElementById('user-role-display').textContent = userInfo.role;
+        }
+
+        const collectionsContainer = document.getElementById('collections-container');
+        const noCollectionsMessage = document.getElementById('no-collections-message');
+        
+        let collections = JSON.parse(localStorage.getItem(`collections_${currentUser}`)) || [];
+        let borrowings = JSON.parse(localStorage.getItem(`borrowings_${currentUser}`)) || [];
+
+        /**
+         * 新增功能：检查一本书是否已被任何用户借阅
+         * @param {number} bookId - 要检查的书籍ID
+         * @returns {boolean} - 如果已被借阅则返回true，否则返回false
+         */
+        function isBookAlreadyBorrowed(bookId) {
+            const allUsers = JSON.parse(localStorage.getItem('users')) || [];
+            for (const user of allUsers) {
+                const userBorrowings = JSON.parse(localStorage.getItem(`borrowings_${user.username}`)) || [];
+                if (userBorrowings.some(book => book.id === bookId)) {
+                    return true; // 在某个用户的借阅列表中找到了这本书
+                }
+            }
+            return false; // 所有用户的借阅列表都没有这本书
+        }
+
+        function renderCollections() {
+            collectionsContainer.innerHTML = '';
+            if (collections.length === 0) {
+                noCollectionsMessage.classList.remove('hidden');
+                return;
+            }
+            
+            noCollectionsMessage.classList.add('hidden');
+            collections.forEach(book => {
+                // --- 修改了这里的逻辑以支持全局借阅状态检查 ---
+                const isBorrowedByCurrentUser = borrowings.some(b => b.id === book.id);
+                const isBorrowedByAnyone = isBookAlreadyBorrowed(book.id);
+                
+                let borrowButtonText = '借阅';
+                let borrowButtonDisabled = '';
+                let borrowButtonClass = 'btn-primary';
+
+                if(isBorrowedByAnyone) {
+                    borrowButtonDisabled = 'disabled';
+                    if(isBorrowedByCurrentUser) {
+                        borrowButtonText = '已借阅';
+                    } else {
+                        borrowButtonText = '已被借出';
+                        borrowButtonClass = 'btn-secondary'; // 使用不同的样式表示被他人借阅
+                    }
+                }
+                // --- 逻辑修改结束 ---
+
+                const card = `
+                    <div class="bg-white rounded-xl shadow-md overflow-hidden card-hover">
+                        <img src="${book.image}" alt="${book.title}" class="w-full h-48 object-cover">
+                        <div class="p-4">
+                            <h3 class="text-lg font-bold truncate">${book.title}</h3>
+                            <p class="text-sm text-gray-600 mb-2">${book.author}</p>
+                            <div class="mt-4 flex justify-between items-center">
+                                <button class="${borrowButtonClass} borrow-btn" data-book-id="${book.id}" ${borrowButtonDisabled}>
+                                    ${borrowButtonText}
+                                </button>
+                                <button class="btn-danger remove-btn" data-book-id="${book.id}">
+                                    移除
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                collectionsContainer.innerHTML += card;
+            });
+            addEventListeners();
+        }
+
+        function addEventListeners() {
+            document.querySelectorAll('.borrow-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const bookId = parseInt(this.getAttribute('data-book-id'));
+                    borrowBook(bookId);
+                });
+            });
+
+            document.querySelectorAll('.remove-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const bookId = parseInt(this.getAttribute('data-book-id'));
+                    removeCollection(bookId);
+                });
+            });
+        }
+        
+        function borrowBook(bookId) {
+            // --- 新增：在借阅前进行全局检查 ---
+            if (isBookAlreadyBorrowed(bookId)) {
+                alert('抱歉，这本书已经被其他用户借阅了。');
+                return; // 中止函数执行
+            }
+
+            const book = collections.find(b => b.id === bookId);
+            if (book) {
+                const borrowDate = new Date();
+                const dueDate = new Date();
+                dueDate.setDate(borrowDate.getDate() + 30);
+                
+                const borrowedBook = { ...book, borrowDate: borrowDate.toLocaleDateString(), dueDate: dueDate.toLocaleDateString() };
+                
+                borrowings.push(borrowedBook);
+                localStorage.setItem(`borrowings_${currentUser}`, JSON.stringify(borrowings));
+                
+                alert(`《${book.title}》借阅成功！`);
+                renderCollections();
+            }
+        }
+        
+        function removeCollection(bookId) {
+            const bookIndex = collections.findIndex(b => b.id === bookId);
+            if(bookIndex > -1) {
+                const bookTitle = collections[bookIndex].title;
+                collections.splice(bookIndex, 1);
+                localStorage.setItem(`collections_${currentUser}`, JSON.stringify(collections));
+                alert(`《${bookTitle}》已从收藏中移除！`);
+                renderCollections();
+            }
+        }
+
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            sessionStorage.removeItem('currentUser');
+            alert('您已成功登出！');
+            window.location.href = 'login.html';
+        });
+
+        renderCollections();
+          // Background Image Slideshow Logic
+      const backgroundImages = [
+        'images/background1.jpg',
+        'images/background2.jpg',
+        'images/background3.jpg'
+      ];
+      const backgroundSlideshow = document.getElementById('background-slideshow');
+      if (backgroundSlideshow) {
+        backgroundSlideshow.style.backgroundImage = `url('${backgroundImages[0]}')`;
+        let currentImageIndex = 0;
+        function changeBackgroundImage() {
+          currentImageIndex = (currentImageIndex + 1) % backgroundImages.length;
+          backgroundSlideshow.style.backgroundImage = `url('${backgroundImages[currentImageIndex]}')`;
+        }
+        if (backgroundImages.length > 1) {
+          setInterval(changeBackgroundImage, 15000);
+        }
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>图书管理系统 - 我的借阅</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: '#81C784',
+            secondary: '#A5D6A7',
+            tertiary: '#C8E6C9',
+            accent: '#4CAF50',
+            neutral: '#F1F8E9',
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      }
+    }
+  </script>
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .sidebar-item { @apply flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200; }
+      .sidebar-item.active { @apply bg-primary/20 text-accent font-medium dark:bg-primary/30 dark:text-white; }
+      .sidebar-item:hover:not(.active) { @apply bg-gray-100 dark:bg-gray-700; }
+      .btn-primary { @apply bg-primary hover:bg-accent text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5; }
+      .btn-secondary { @apply bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium py-2 px-4 rounded-lg transition-all duration-200 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600; }
+      .btn-return { @apply text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300; }
+      /* Modal样式 */
+      .modal-backdrop { @apply fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center transition-opacity; }
+      .modal-content { @apply bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-6 md:p-8 w-11/12 max-w-2xl transform transition-transform scale-95; }
+    }
+  </style>
+  <style>
+    /* --- 标准化背景样式 开始 --- */
+    #background-slideshow {
+        background-image: url('images/background1.jpg');
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        transition: background-image 1s ease-in-out;
+        filter: brightness(85%);
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+    }
+    body { background-color: transparent; }
+    aside, main, header {
+        background-color: rgba(255, 255, 255, 0.3);
+        position: relative;
+        z-index: 1;
+    }
+    .dark #background-slideshow { filter: brightness(60%); }
+    .dark body { background-color: transparent; }
+    .dark aside, .dark main, .dark header { background-color: rgba(31, 41, 55, 0.3); }
+    .dark .bg-white { background-color: rgba(31, 41, 55, 0.7); }
+    .dark .bg-gray-50 { background-color: rgba(55, 65, 81, 0.7); }
+    /* --- 标准化背景样式 结束 --- */
+  </style>
+</head>
+<body class="font-sans text-gray-800 dark:text-gray-200">
+
+  <div id="background-slideshow"></div>
+
+  <script>
+    (function() {
+      const currentUser = sessionStorage.getItem('currentUser');
+      if (!currentUser) {
+        alert('请先登录！');
+        window.location.href = 'login.html';
+      }
+    })();
+  </script>
+
+  <div id="user-dashboard" class="min-h-screen flex flex-col">
+    <header class="shadow-sm sticky top-0 z-50">
+        <div class="flex items-center justify-between px-4 sm:px-6 lg:px-8 py-3">
+            <div class="flex items-center space-x-2">
+              <button id="sidebar-toggle" class="lg:hidden text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
+                <i class="fa fa-bars text-xl"></i>
+              </button>
+              <div class="flex items-center">
+                <i class="fa fa-book text-primary text-2xl mr-2"></i>
+                <h1 class="text-xl font-bold text-gray-900 dark:text-white" data-translate-key="system_title">图书管理系统</h1>
+              </div>
+            </div>
+            <div class="flex items-center space-x-4">
+              <div class="relative">
+                <button class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 relative">
+                  <i class="fa fa-bell-o text-gray-500 dark:text-gray-400"></i>
+                  <span class="absolute top-1 right-1 h-2 w-2 rounded-full bg-red-500"></span>
+                </button>
+              </div>
+              <div class="flex items-center space-x-3">
+                <img src="https://picsum.photos/id/1005/40/40" alt="用户头像" class="h-8 w-8 rounded-full object-cover">
+                <div class="hidden md:block">
+                  <p id="user-name-display" class="text-sm font-medium text-gray-700 dark:text-gray-300"></p>
+                  <p id="user-role-display" class="text-xs text-gray-500 dark:text-gray-400"></p>
+                </div>
+                <button id="logout-btn" class="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
+                  <i class="fa fa-sign-out"></i>
+                </button>
+              </div>
+            </div>
+        </div>
+    </header>
+    <div class="flex flex-1 overflow-hidden">
+     <aside id="sidebar" class="w-64 shadow-md transform -translate-x-full lg:translate-x-0 fixed lg:static h-[calc(100vh-64px)] z-40 transition-transform duration-300 ease-in-out">
+        <div class="flex flex-col h-full">
+            <nav class="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
+              <div class="px-4 py-2 mb-4">
+                <h2 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider" data-translate-key="main_menu">主菜单</h2>
+              </div>
+              <a href="user-page.html" class="sidebar-item" data-page="user-page">
+                <i class="fa fa-home text-lg"></i>
+                <span data-translate-key="home">首页</span>
+              </a>
+              <a href="page.html" class="sidebar-item" data-page="book_list">
+                <i class="fa fa-book text-lg"></i>
+                <span data-translate-key="book_list">图书列表</span>
+              </a>
+              <a href="my_borrowings.html" class="sidebar-item active" data-page="my_borrowings">
+                <i class="fa fa-calendar-check-o text-lg"></i>
+                <span data-translate-key="my_borrowings">我的借阅</span>
+              </a>
+              <a href="my_collections.html" class="sidebar-item" data-page="my_collections">
+                <i class="fa fa-star-o text-lg"></i>
+                <span data-translate-key="my_collections">我的收藏</span>
+              </a>
+              <a href="borrowing_history.html" class="sidebar-item" data-page="borrowing_history">
+                <i class="fa fa-clock-o text-lg"></i>
+                <span data-translate-key="borrowing_history">借阅历史</span>
+              </a>
+              <div class="px-4 py-2 mt-6 mb-4">
+                <h2 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider" data-translate-key="settings_menu">设置</h2>
+              </div>
+              <a href="personal_info.html" class="sidebar-item" data-page="personal_info">
+                <i class="fa fa-user-o text-lg"></i>
+                <span data-translate-key="personal_info">个人信息</span>
+              </a>
+              <a href="system_settings.html" class="sidebar-item" data-page="system_settings">
+                <i class="fa fa-cog text-lg"></i>
+                <span data-translate-key="system_settings">系统设置</span>
+              </a>
+            </nav>
+        </div>
+      </aside>
+
+      <main class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+        <div class="flex justify-between items-center mb-8">
+            <div>
+                <h2 class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold text-gray-900 dark:text-white" data-translate-key="my_borrowings_title">我的借阅</h2>
+                <p class="text-gray-600 dark:text-gray-400" data-translate-key="my_borrowings_subtitle">管理您当前借阅的图书。</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <button id="pay-fine-btn" class="btn-primary flex items-center gap-2">
+                    <i class="fa fa-qrcode"></i>
+                    <span class="hidden sm:inline">支付罚款</span>
+                </button>
+                <button id="fine-rules-btn" class="btn-secondary flex items-center gap-2">
+                    <i class="fa fa-gavel"></i>
+                    <span class="hidden sm:inline">罚款规则</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div class="p-6">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4" data-translate-key="current_borrowings_header">当前借阅</h3>
+            <div class="overflow-x-auto">
+              <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider" data-translate-key="col_book_title">书籍名称</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider" data-translate-key="col_borrow_date">借阅日期</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider" data-translate-key="col_due_date">应还日期</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider" data-translate-key="col_status">状态</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider" data-translate-key="col_fine">罚款金额</th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider" data-translate-key="col_actions">操作</th>
+                  </tr>
+                </thead>
+                <tbody id="borrowings-tbody" class="bg-white divide-y divide-gray-200 dark:divide-gray-700">
+                  </tbody>
+              </table>
+              <div id="no-borrowings-message" class="hidden text-center py-10">
+                    <i class="fa fa-book text-4xl text-gray-400 mb-4"></i>
+                    <p class="text-gray-500 dark:text-gray-400">您当前没有借阅任何书籍。</p>
+                  </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div id="fine-rules-modal" class="modal-backdrop opacity-0 pointer-events-none">
+      <div class="modal-content opacity-0">
+          <div class="flex justify-between items-center mb-4">
+              <h3 class="text-xl font-bold text-gray-900 dark:text-white">图书借阅罚款规则</h3>
+              <button id="close-rules-modal-btn" class="text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white">&times;</button>
+          </div>
+          <div class="text-gray-700 dark:text-gray-300 space-y-4 text-sm max-h-[60vh] overflow-y-auto pr-2">
+              <p>为维护全体读者的借阅权益，保障图书资源的正常流通，特制定本规则。请各位读者自觉遵守。</p>
+              <div>
+                  <h4 class="font-semibold text-md text-gray-800 dark:text-gray-200 mb-1">1. 逾期处理规则</h4>
+                  <ul class="list-disc list-inside space-y-1">
+                      <li>读者应在图书应还日期前归还所借书籍。</li>
+                      <li>每册图书逾期将按 **每天 ¥0.50** 计算罚款，自逾期第一天算起。</li>
+                      <li>逾期罚款累计上限为 **¥30.00** 或该书价格的50%（以较低者为准）。</li>
+                      <li>存在未缴清的逾期罚款时，将暂停该读者的借阅权限，直至罚款缴清。</li>
+                  </ul>
+              </div>
+              <div>
+                  <h4 class="font-semibold text-md text-gray-800 dark:text-gray-200 mb-1">2. 图书损坏处理规则</h4>
+                  <ul class="list-disc list-inside space-y-1">
+                      <li>轻微损坏（如少量笔记、折角等）且不影响再次阅读的，将根据损坏程度处以 **¥5.00 - ¥20.00** 的罚款。</li>
+                      <li>严重损坏（如撕页、涂画、浸水等），导致图书无法正常流通的，按图书遗失处理。</li>
+                  </ul>
+              </div>
+              <div>
+                  <h4 class="font-semibold text-md text-gray-800 dark:text-gray-200 mb-1">3. 图书遗失处理规则</h4>
+                  <ul class="list-disc list-inside space-y-1">
+                      <li>读者若不慎遗失所借图书，应立即告知管理员。</li>
+                      <li>读者需按图书原价进行赔偿。对于已绝版或难以购买的珍贵图书，赔偿金额将按原价的2-3倍计算。</li>
+                      <li>完成赔偿后，可恢复借阅权限。</li>
+                  </ul>
+              </div>
+              <p class="font-semibold text-accent dark:text-primary pt-2">请爱惜图书，文明阅读，按时归还。感谢您的理解与配合！</p>
+          </div>
+      </div>
+  </div>
+
+  <div id="pay-fine-modal" class="modal-backdrop opacity-0 pointer-events-none">
+      <div class="modal-content opacity-0" style="max-width: 400px;">
+          <div class="flex justify-between items-center mb-4">
+              <h3 class="text-xl font-bold text-gray-900 dark:text-white">支付罚款</h3>
+              <button id="close-payment-modal-btn" class="text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white">&times;</button>
+          </div>
+          <div class="text-center text-gray-700 dark:text-gray-300 space-y-4">
+              <p>您可以扫描下方的二维码支付罚款。</p>
+              <p id="total-fine-display" class="text-lg font-bold my-4"></p>
+              <img src="images/background4.jpg" alt="支付二维码" class="mx-auto rounded-lg shadow-md w-full max-w-[250px]">
+              <p class="text-sm text-gray-500 dark:text-gray-400">支付完成后，请联系管理员确认并清除罚款记录。</p>
+          </div>
+      </div>
+  </div>
+
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const currentUser = sessionStorage.getItem('currentUser');
+      if (!currentUser) return;
+
+      const users = JSON.parse(localStorage.getItem('users')) || [];
+      const userInfo = users.find(u => u.username === currentUser);
+      if (userInfo) {
+        document.getElementById('user-name-display').textContent = userInfo.name;
+        document.getElementById('user-role-display').textContent = userInfo.role;
+      }
+
+      const borrowingsTbody = document.getElementById('borrowings-tbody');
+      const noBorrowingsMessage = document.getElementById('no-borrowings-message');
+      
+      let borrowings = JSON.parse(localStorage.getItem(`borrowings_${currentUser}`)) || [];
+      // History is loaded to be UPDATED, not just read.
+      let history = JSON.parse(localStorage.getItem(`borrowing_history_${currentUser}`)) || [];
+
+      function calculateOverdueFine(dueDateStr) {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0); 
+          const dueDate = new Date(dueDateStr);
+          dueDate.setHours(0, 0, 0, 0); 
+          if (today <= dueDate) return 0;
+          const timeDiff = today.getTime() - dueDate.getTime();
+          const daysOverdue = Math.ceil(timeDiff / (1000 * 3600 * 24));
+          const finePerDay = 0.50;
+          const maxFine = 30.00;
+          const calculatedFine = daysOverdue * finePerDay;
+          return Math.min(calculatedFine, maxFine);
+      }
+      
+      function calculateTotalFine() {
+        return borrowings.reduce((total, book) => total + calculateOverdueFine(book.dueDate), 0);
+      }
+
+      function renderBorrowings() {
+        borrowingsTbody.innerHTML = '';
+        if (borrowings.length === 0) {
+          noBorrowingsMessage.classList.remove('hidden');
+          borrowingsTbody.parentElement.classList.add('hidden');
+        } else {
+          noBorrowingsMessage.classList.add('hidden');
+          borrowingsTbody.parentElement.classList.remove('hidden');
+          borrowings.forEach(book => {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const isOverdue = new Date(book.dueDate) < today;
+            const fineAmount = calculateOverdueFine(book.dueDate);
+            const fineDisplay = fineAmount > 0 ? `¥${fineAmount.toFixed(2)}` : '无';
+            
+            const row = `
+              <tr class="dark:bg-transparent hover:bg-gray-50 dark:hover:bg-gray-800">
+                <td class="px-6 py-4 whitespace-nowrap">${book.title}</td>
+                <td class="px-6 py-4 whitespace-nowrap">${book.borrowDate}</td>
+                <td class="px-6 py-4 whitespace-nowrap">${book.dueDate}</td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${isOverdue ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'} dark:${isOverdue ? 'bg-red-900/50 text-red-300' : 'bg-green-900/50 text-green-300'}">
+                    ${isOverdue ? '已逾期' : '借阅中'}
+                  </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm ${fineAmount > 0 ? 'text-red-500 font-semibold' : 'text-gray-500 dark:text-gray-400'}">
+                    ${fineDisplay}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <button class="btn-return" data-book-id="${book.id}">归还</button>
+                </td>
+              </tr>
+            `;
+            borrowingsTbody.innerHTML += row;
+          });
+        }
+        addReturnListeners();
+      }
+      
+      function addReturnListeners() {
+        document.querySelectorAll('.btn-return').forEach(button => {
+          button.addEventListener('click', function() {
+            const bookId = parseInt(this.getAttribute('data-book-id'));
+            const bookToReturn = borrowings.find(b => b.id === bookId);
+            if (bookToReturn) {
+              const fine = calculateOverdueFine(bookToReturn.dueDate);
+              if (fine > 0) {
+                  if (!confirm(`《${bookToReturn.title}》已逾期，需支付罚款 ¥${fine.toFixed(2)}。确认归还吗？`)) {
+                      return; 
+                  }
+              }
+              returnBook(bookId);
+            }
+          });
+        });
+      }
+      
+      // ##### REVISED AND CONFIRMED FUNCTION #####
+      function returnBook(bookId) {
+        const bookIndex = borrowings.findIndex(b => b.id === bookId);
+        if (bookIndex > -1) {
+          const returnedBook = borrowings[bookIndex];
+
+          // --- LOGIC TO UPDATE HISTORY ---
+          // This logic finds the "borrowing" record and updates its status to "returned",
+          // ensuring a single, accurate history entry per loan.
+          const historyIndex = history.findIndex(record => record.id === bookId && record.status === '借阅中');
+          
+          if (historyIndex > -1) {
+            history[historyIndex].status = '已归还';
+            history[historyIndex].returnDate = new Date().toLocaleDateString();
+          } else {
+            // This is a fallback for older data that might not have a "borrowing" record.
+            // It preserves the original behavior of creating a history record on return.
+            // This fallback should ideally not be triggered if borrowBook() works correctly.
+            history.push({
+              ...returnedBook,
+              returnDate: new Date().toLocaleDateString(),
+              status: '已归还'
+            });
+          }
+          // Save the updated history.
+          localStorage.setItem(`borrowing_history_${currentUser}`, JSON.stringify(history));
+          
+          // --- ORIGINAL FUNCTIONALITY: Remove from current borrowings ---
+          borrowings.splice(bookIndex, 1);
+          localStorage.setItem(`borrowings_${currentUser}`, JSON.stringify(borrowings));
+          
+          alert(`《${returnedBook.title}》已归还！`);
+          renderBorrowings();
+        }
+      }
+      
+      const sidebarToggle = document.getElementById('sidebar-toggle');
+      const sidebar = document.getElementById('sidebar');
+      sidebarToggle.addEventListener('click', () => sidebar.classList.toggle('-translate-x-full'));
+      document.getElementById('logout-btn').addEventListener('click', () => {
+        sessionStorage.removeItem('currentUser');
+        alert('您已成功登出！');
+        window.location.href = 'login.html';
+      });
+
+      renderBorrowings();
+
+      const backgroundImages = ['images/background1.jpg', 'images/background2.jpg', 'images/background3.jpg'];
+      const backgroundSlideshow = document.getElementById('background-slideshow');
+      if (backgroundSlideshow) {
+        backgroundSlideshow.style.backgroundImage = `url('${backgroundImages[0]}')`;
+        let currentImageIndex = 0;
+        function changeBackgroundImage() {
+          currentImageIndex = (currentImageIndex + 1) % backgroundImages.length;
+          backgroundSlideshow.style.backgroundImage = `url('${backgroundImages[currentImageIndex]}')`;
+        }
+        if (backgroundImages.length > 1) setInterval(changeBackgroundImage, 15000);
+      }
+
+      // --- MODAL CONTROL LOGIC (UNCHANGED) ---
+      function setupModal(modalId, openBtnId, closeBtnId) {
+          const modal = document.getElementById(modalId);
+          if (!modal) return;
+          const modalContent = modal.querySelector('.modal-content');
+          const openBtn = document.getElementById(openBtnId);
+          const closeBtn = document.getElementById(closeBtnId);
+
+          const openModal = () => {
+              modal.classList.remove('pointer-events-none', 'opacity-0');
+              modalContent.classList.remove('opacity-0', 'scale-95');
+          };
+          const closeModal = () => {
+              modalContent.classList.add('opacity-0', 'scale-95');
+              modal.classList.add('opacity-0');
+              setTimeout(() => modal.classList.add('pointer-events-none'), 300);
+          };
+          
+          if(openBtn) openBtn.addEventListener('click', openModal);
+          if(closeBtn) closeBtn.addEventListener('click', closeModal);
+          modal.addEventListener('click', (e) => {
+              if (e.target === modal) closeModal();
+          });
+      }
+      
+      setupModal('fine-rules-modal', 'fine-rules-btn', 'close-rules-modal-btn');
+
+      const payFineBtn = document.getElementById('pay-fine-btn');
+      const payFineModal = document.getElementById('pay-fine-modal');
+      const closePaymentBtn = document.getElementById('close-payment-modal-btn');
+      const totalFineDisplay = document.getElementById('total-fine-display');
+
+      payFineBtn.addEventListener('click', () => {
+          const totalFine = calculateTotalFine();
+          if (totalFine > 0) {
+              totalFineDisplay.textContent = `你应该支付的罚款为：¥${totalFine.toFixed(2)}元`;
+              totalFineDisplay.className = 'text-lg font-bold my-4 text-red-600 dark:text-red-400';
+          } else {
+              totalFineDisplay.textContent = '您当前没有需要支付的罚款。';
+              totalFineDisplay.className = 'text-lg font-bold my-4 text-green-600 dark:text-green-400';
+          }
+          payFineModal.classList.remove('pointer-events-none', 'opacity-0');
+          payFineModal.querySelector('.modal-content').classList.remove('opacity-0', 'scale-95');
+      });
+
+      const closePayModal = () => {
+        payFineModal.querySelector('.modal-content').classList.add('opacity-0', 'scale-95');
+        payFineModal.classList.add('opacity-0');
+        setTimeout(() => payFineModal.classList.add('pointer-events-none'), 300);
+      }
+
+      closePaymentBtn.addEventListener('click', closePayModal);
+      payFineModal.addEventListener('click', (e) => {
+          if (e.target === payFineModal) closePayModal();
+      });
+
+    });
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,76 @@
+# === 通用忽略规则 ===
+*.log
+*.tmp
+*.bak
+*.swp
+*~
+
+# === CMake 构建产物 ===
+build/
+Build/
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+Makefile
+CMakeInstall.cmake
+CTestTestfile.cmake
+install_manifest.txt
+
+# Ninja
+.ninja*
+rules.ninja
+
+# Visual Studio CMake
+CMakeUserPresets.json
+
+# 编译输出（可执行文件 / 对象文件 / 库文件）
+*.out
+*.o
+*.obj
+*.so
+*.a
+*.dll
+*.lib
+*.exe
+*.dSYM/
+*.stackdump
+
+# === Debug/Release 目录（Windows 上常见） ===
+Debug/
+debug/
+Release/
+release/
+x64/
+x86/
+bin/
+lib/
+
+# === 编译时生成的测试相关 ===
+Testing/
+test/*.log
+test/*.out
+
+# === IDE / 编辑器相关 ===
+.vscode/
+.idea/
+*.code-workspace
+
+# === 前端构建产物（如使用 Vue、React 等） ===
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.vitepress/dist/
+
+# === 忽略用户配置和密钥（如 .env） ===
+.env
+.env.*
+
+# === 备份 / 临时文件 ===
+*.orig
+*.rej
+*.swo
+*.swn
+
+# === macOS / Linux 特有 ===
+.DS_Store
+Thumbs.db

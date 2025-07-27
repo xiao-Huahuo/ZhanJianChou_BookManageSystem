@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>图书管理系统 - 管理员</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: '#81C784',
+            secondary: '#A5D6A7',
+            tertiary: '#C8E6C9',
+            accent: '#4CAF50',
+            neutral: '#F1F8E9',
+            danger: '#EF5350',
+            'danger-hover': '#D32F2F',
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      }
+    }
+  </script>
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto { content-visibility: auto; }
+      .text-shadow { text-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+      .card-hover { transition: all 0.3s ease; }
+      .card-hover:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      }
+      .sidebar-item { @apply flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200; }
+      .sidebar-item.active { @apply bg-primary/20 text-accent font-medium dark:bg-primary/30 dark:text-white; }
+      .sidebar-item:hover:not(.active) { @apply bg-gray-100 dark:bg-gray-700; }
+      .input-focus { @apply focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all duration-200; }
+      .btn-primary { @apply bg-primary hover:bg-accent text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5; }
+      .btn-danger { @apply bg-danger hover:bg-danger-hover text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5; }
+    }
+  </style>
+  <style>
+    #background-slideshow {
+        background-image: url('images/background1.jpg');
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        transition: background-image 1s ease-in-out;
+        filter: brightness(85%);
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+    }
+    body { background-color: transparent; }
+    aside, main, header { background-color: rgba(255, 255, 255, 0.3); position: relative; z-index: 1; }
+    .dark #background-slideshow { filter: brightness(60%); }
+    .dark body { background-color: transparent; }
+    .dark aside, .dark main, .dark header { background-color: rgba(31, 41, 55, 0.3); }
+    .dark .bg-white { background-color: rgba(31, 41, 55, 0.7); }
+    
+    details > summary {
+      cursor: pointer;
+      padding: 1rem;
+      background-color: rgba(255, 255, 255, 0.7);
+      border-radius: 0.5rem;
+      font-weight: 600;
+      transition: background-color 0.2s;
+    }
+    .dark details > summary {
+        background-color: rgba(31, 41, 55, 0.7);
+    }
+    details > summary:hover {
+        background-color: rgba(255, 255, 255, 0.9);
+    }
+    .dark details > summary:hover {
+        background-color: rgba(31, 41, 55, 0.9);
+    }
+    details[open] > summary {
+        border-bottom-left-radius: 0;
+        border-bottom-right-radius: 0;
+    }
+  </style>
+</head>
+<body class="font-sans text-gray-800 dark:text-gray-200">
+
+  <div id="background-slideshow"></div>
+
+  <script>
+    (function() {
+      const currentUser = sessionStorage.getItem('currentUser');
+      if (currentUser !== 'Murmur') {
+        alert('无权访问此页面，请以管理员身份登录！');
+        window.location.href = 'login.html';
+      }
+    })();
+  </script>
+
+  <div id="admin-dashboard" class="min-h-screen flex flex-col">
+    <header class="shadow-sm sticky top-0 z-50">
+      <div class="flex items-center justify-between px-4 sm:px-6 lg:px-8 py-3">
+        <div class="flex items-center space-x-2">
+           <i class="fa fa-book text-primary text-2xl mr-2"></i>
+           <h1 class="text-xl font-bold text-gray-900 dark:text-white">图书管理系统 - 管理员后台</h1>
+        </div>
+        <div class="flex items-center space-x-3">
+            <img src="https://picsum.photos/id/1025/40/40" alt="管理员头像" class="h-8 w-8 rounded-full object-cover">
+            <div>
+              <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Murmur (管理员)</p>
+            </div>
+            <button id="logout-btn" class="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white" title="登出">
+              <i class="fa fa-sign-out"></i>
+            </button>
+        </div>
+      </div>
+    </header>
+
+    <div class="flex flex-1 overflow-hidden">
+      <main class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+
+        <div class="mb-8">
+            <details id="borrowing-status-details">
+                <summary class="text-lg font-semibold text-gray-800 dark:text-white">
+                    <i class="fa fa-eye mr-2"></i> 查看图书借阅状态
+                </summary>
+                <div id="borrowing-status-container" class="p-6 bg-white rounded-b-xl shadow-sm space-y-4 overflow-x-auto">
+                    </div>
+            </details>
+        </div>
+        <div class="mb-8">
+            <details>
+                <summary class="text-lg font-semibold text-gray-800 dark:text-white">
+                    <i class="fa fa-comments-o mr-2"></i> 查看用户反馈
+                </summary>
+                <div id="feedback-display-container" class="p-6 bg-white rounded-b-xl shadow-sm space-y-4">
+                    </div>
+            </details>
+        </div>
+
+        <div class="mb-8">
+          <h2 class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold text-gray-900 dark:text-white">添加新图书</h2>
+          <form id="add-book-form" class="bg-white rounded-xl shadow-sm p-6 mt-4 space-y-4">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <input type="text" id="new-book-title" placeholder="书名" class="px-4 py-2 border border-gray-300 rounded-lg input-focus bg-transparent dark:text-white">
+                  <input type="text" id="new-book-author" placeholder="作者" class="px-4 py-2 border border-gray-300 rounded-lg input-focus bg-transparent dark:text-white">
+              </div>
+              <textarea id="new-book-desc" placeholder="简介" rows="3" class="w-full px-4 py-2 border border-gray-300 rounded-lg input-focus bg-transparent dark:text-white"></textarea>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <input type="text" id="new-book-isbn" placeholder="ISBN (选填)" class="px-4 py-2 border border-gray-300 rounded-lg input-focus bg-transparent dark:text-white">
+                  <select id="new-book-category" class="px-4 py-2 border border-gray-300 rounded-lg bg-transparent dark:text-white dark:bg-gray-800">
+                      <option value="文学">文学</option>
+                      <option value="历史">历史</option>
+                      <option value="科学">科学</option>
+                      <option value="小说">小说</option>
+                      <option value="哲学">哲学</option>
+                      <option value="计算机">计算机</option>
+                      <option value="艺术">艺术</option>
+                      <option value="心理学">心理学</option>
+                  </select>
+              </div>
+              <button type="button" id="add-book-btn" class="btn-primary w-full md:w-auto">
+                <i class="fa fa-plus-circle"></i> 添加图书
+              </button>
+          </form>
+        </div>
+        <div class="mb-8">
+          <h2 class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold text-gray-900 dark:text-white">管理图书列表</h2>
+          <p class="text-gray-600 dark:text-gray-400">在此处增加或删除图书。</p>
+        </div>
+
+        <div id="book-list-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          </div>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        let books = [];
+
+        function getMasterBookList() {
+            let storedBooks = localStorage.getItem('books');
+            if (!storedBooks) {
+                const initialBooks = [];
+                localStorage.setItem('books', JSON.stringify(initialBooks));
+                return initialBooks;
+            }
+            return JSON.parse(storedBooks);
+        }
+
+        books = getMasterBookList();
+
+        const bookListContainer = document.getElementById('book-list-container');
+        const addBookBtn = document.getElementById('add-book-btn');
+
+        function renderBooks() {
+            bookListContainer.innerHTML = '';
+            books.forEach(book => {
+                const card = `
+                    <div class="bg-white rounded-xl shadow-md overflow-hidden card-hover flex flex-col">
+                        <img src="${book.image}" alt="${book.title}" class="w-full h-48 object-cover" onerror="this.onerror=null;this.src='images/new_book_cover.jpg';">
+                        <div class="p-4 flex flex-col flex-grow">
+                            <div class="flex-grow">
+                                <h3 class="text-lg font-bold truncate">${book.title}</h3>
+                                <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">${book.author}</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-500 h-10 overflow-hidden">${book.description}</p>
+                            </div>
+                            <div class="mt-4 flex justify-end">
+                                <button class="btn-danger delete-btn" data-book-id="${book.id}">
+                                    <i class="fa fa-trash"></i> 删除
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                bookListContainer.innerHTML += card;
+            });
+            addDeleteEventListeners();
+        }
+
+        function addDeleteEventListeners() {
+            document.querySelectorAll('.delete-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const bookId = parseInt(this.getAttribute('data-book-id'));
+                    deleteBook(bookId);
+                });
+            });
+        }
+        
+        function isBookAlreadyBorrowed(bookId) {
+            const allUsers = JSON.parse(localStorage.getItem('users')) || [];
+            for (const user of allUsers) {
+                const userBorrowings = JSON.parse(localStorage.getItem(`borrowings_${user.username}`)) || [];
+                if (userBorrowings.some(book => book.id === bookId)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function deleteBook(bookId) {
+            const bookToDelete = books.find(b => b.id === bookId);
+            if (!bookToDelete) return;
+
+            if (isBookAlreadyBorrowed(bookId)) {
+                alert(`无法删除《${bookToDelete.title}》，因为该书已被用户借出。`);
+                return;
+            }
+            
+            if (confirm(`您确定要删除书籍《${bookToDelete.title}》吗？此操作不可逆。`)) {
+                books = books.filter(b => b.id !== bookId);
+                localStorage.setItem('books', JSON.stringify(books));
+                alert(`《${bookToDelete.title}》已成功删除。`);
+                renderBooks();
+                renderBorrowingStatus();
+            }
+        }
+        
+        // --- MODIFIED FUNCTION ---
+        function addBook() {
+            const title = document.getElementById('new-book-title').value.trim();
+            const author = document.getElementById('new-book-author').value.trim();
+            const description = document.getElementById('new-book-desc').value.trim();
+            const isbn = document.getElementById('new-book-isbn').value.trim();
+            const category = document.getElementById('new-book-category').value;
+
+            if (!title || !author) {
+                alert('请至少填写书名和作者！');
+                return;
+            }
+            
+            const imageUrl = 'images/new_book_cover.jpg';
+            const newId = books.length > 0 ? Math.max(...books.map(b => b.id)) + 1 : 1;
+            
+            const newBook = {
+                id: newId,
+                title: `《${title}》`,
+                author: author,
+                isbn: isbn,
+                description: description,
+                image: imageUrl,
+                status: 'available',
+                category: category,
+            };
+
+            books.push(newBook);
+            localStorage.setItem('books', JSON.stringify(books));
+            
+            // --- START: CREATE NOTIFICATION ---
+            const notifications = JSON.parse(localStorage.getItem('notifications')) || [];
+            const newNotification = {
+                id: Date.now(), // Unique ID
+                type: 'new_book',
+                bookTitle: newBook.title,
+                timestamp: new Date().toISOString() // ISO format for easy comparison
+            };
+            notifications.unshift(newNotification); // Add to the beginning of the list
+            localStorage.setItem('notifications', JSON.stringify(notifications));
+            // --- END: CREATE NOTIFICATION ---
+// --- START: CREATE NOTIFICATION ---
+
+            alert(`书籍《${title}》已成功添加！`);
+            document.getElementById('add-book-form').reset();
+            renderBooks();
+        }
+        
+        function renderFeedback() {
+            const feedbackContainer = document.getElementById('feedback-display-container');
+            const allFeedback = JSON.parse(localStorage.getItem('userFeedback')) || [];
+
+            if (allFeedback.length === 0) {
+                feedbackContainer.innerHTML = `<p class="text-gray-500">暂无用户反馈。</p>`;
+                return;
+            }
+
+            let feedbackHTML = allFeedback.reverse().map(item => `
+                <div class="border-b border-gray-200 dark:border-gray-600 pb-3 mb-3">
+                    <p class="text-gray-800 dark:text-gray-200">${item.text}</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                        由 <strong>${item.username}</strong> 于 ${item.date} 提交
+                    </p>
+                </div>
+            `).join('');
+            
+            feedbackContainer.innerHTML = feedbackHTML;
+        }
+
+        function renderBorrowingStatus() {
+            const statusContainer = document.getElementById('borrowing-status-container');
+            const allUsers = JSON.parse(localStorage.getItem('users')) || [];
+            let allBorrowedBooks = [];
+
+            allUsers.forEach(user => {
+                const userBorrowings = JSON.parse(localStorage.getItem(`borrowings_${user.username}`)) || [];
+                userBorrowings.forEach(book => {
+                    allBorrowedBooks.push({
+                        title: book.title,
+                        borrower: user.name,
+                        borrowDate: book.borrowDate,
+                        dueDate: book.dueDate
+                    });
+                });
+            });
+
+            if (allBorrowedBooks.length === 0) {
+                statusContainer.innerHTML = '<p class="text-gray-500">当前没有图书被借出。</p>';
+                return;
+            }
+
+            let tableHTML = `
+                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead class="bg-gray-50 dark:bg-gray-800">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">书籍名称</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">借阅人</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">借阅日期</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">应还日期</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white dark:bg-gray-900/50 divide-y divide-gray-200 dark:divide-gray-700">
+            `;
+
+            allBorrowedBooks.forEach(book => {
+                tableHTML += `
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap">${book.title}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">${book.borrower}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">${book.borrowDate}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">${book.dueDate}</td>
+                    </tr>
+                `;
+            });
+
+            tableHTML += '</tbody></table>';
+            statusContainer.innerHTML = tableHTML;
+        }
+
+        addBookBtn.addEventListener('click', addBook);
+        
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            sessionStorage.removeItem('currentUser');
+alert('您已成功登出！');
+            window.location.href = 'login.html';
+        });
+
+        document.getElementById('borrowing-status-details').addEventListener('toggle', function(event) {
+            if (this.open) {
+                renderBorrowingStatus();
+            }
+        });
+
+        renderBooks();
+        renderFeedback();
+
+        window.addEventListener('storage', function(e) {
+            if (e.key === 'books') {
+                books = JSON.parse(e.newValue);
+                renderBooks();
+            }
+            if (e.key === 'userFeedback' || e.key.startsWith('borrowings_')) {
+                renderFeedback();
+                const borrowingDetails = document.getElementById('borrowing-status-details');
+                if (borrowingDetails.open) {
+                    renderBorrowingStatus();
+                }
+            }
+        });
+
+        const backgroundImages = ['images/background1.jpg', 'images/background2.jpg', 'images/background3.jpg'];
+        const backgroundSlideshow = document.getElementById('background-slideshow');
+        if (backgroundSlideshow) {
+            let currentImageIndex = 0;
+            backgroundSlideshow.style.backgroundImage = `url('${backgroundImages[0]}')`;
+            if (backgroundImages.length > 1) {
+                setInterval(() => {
+                    currentImageIndex = (currentImageIndex + 1) % backgroundImages.length;
+                    backgroundSlideshow.style.backgroundImage = `url('${backgroundImages[currentImageIndex]}')`;
+                }, 15000);
+            }
+        }
+    });
+  </script>
+</body>
+</html>
